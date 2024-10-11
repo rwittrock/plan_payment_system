@@ -1,0 +1,10 @@
+{
+  "snickers": {
+    "price": 1000,
+    "sold": 397
+  },
+  "beer": {
+    "price": 1000,
+    "sold": 704
+  }
+}

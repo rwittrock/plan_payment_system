@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #f7f7f7;
+        }
+
+        .container {
+            max-width: 400px;
+            width: 100%;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+        }
+
+        h1,
+        h2 {
+            text-align: center;
+            color: #333;
+        }
+
+        .user-select,
+        .product-quantity {
+            width: 100%;
+            margin-bottom: 20px;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        .info,
+        .product-list,
+        .total-display {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .product-list-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #28a745;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #218838;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h1>User Balance</h1>
+
+        <!-- Dropdown to select a user -->
+        <select id="userSelect" class="user-select">
+            <option value="">Select a user</option>
+        </select>
+
+        <!-- User information -->
+        <div class="info" id="userInfo">
+            <p><span id="userName">Name:</span></p>
+            <p><span id="userBalance">Balance:</span></p>
+        </div>
+
+        <h2>Products</h2>
+
+        <!-- Product list to buy from -->
+        <div id="productList" class="product-list"></div>
+
+        <!-- Total price and updated balance -->
+        <div class="total-display">
+            <p>Total Price: <span id="totalPrice">0</span></p>
+            <p>Updated Balance: <span id="updatedBalance">0</span></p>
+        </div>
+
+        <!-- Button to buy products -->
+        <button id="buyButton">Buy Products</button>
+    </div>
+
+    <script>
+        const serverUrl = 'http://localhost:3000';  // Change this to your actual server URL
+
+        // Variables to store user data
+        let selectedUser = '';
+        let selectedUserBalance = 0;
+        let totalPrice = 0;
+        let products = {};
+
+        // Load users from backend
+        async function loadUsers() {
+            try {
+                const response = await fetch(`${serverUrl}/people`);
+                const users = await response.json();
+                const sortedUsers = Object.keys(users).sort((a, b) => a.localeCompare(b));
+
+                const userSelect = document.getElementById('userSelect');
+                userSelect.innerHTML = '<option value="">Select a user</option>';
+                sortedUsers.forEach(userName => {
+                    const option = document.createElement('option');
+                    option.value = userName;
+                    option.textContent = userName;
+                    userSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading users:', error);
+            }
+        }
+
+        // Load products from backend
+        async function loadProducts() {
+            try {
+                const response = await fetch(`${serverUrl}/products`);
+                products = await response.json();
+
+                const productList = document.getElementById('productList');
+                productList.innerHTML = ''; // Reset list
+
+                // Display each product with input to choose quantity
+                Object.keys(products).forEach(product => {
+                    const productItem = document.createElement('div');
+                    productItem.classList.add('product-list-item');
+                    productItem.innerHTML = `
+                    <span>${product} - ${products[product].price}</span>
+                    <input type="number" min="0" value="0" id="quantity-${product}" class="product-quantity" />
+                `;
+                    productList.appendChild(productItem);
+                });
+            } catch (error) {
+                console.error('Error loading products:', error);
+            }
+        }
+
+        // Event listener for user selection
+        document.getElementById('userSelect').addEventListener('change', function () {
+            const userName = this.value;
+            if (userName) {
+                fetchUserDetails(userName);
+            } else {
+                document.getElementById('userName').textContent = 'Name:';
+                document.getElementById('userBalance').textContent = 'Balance:';
+            }
+        });
+
+        // Fetch selected user's details
+        async function fetchUserDetails(userName) {
+            try {
+                const response = await fetch(`${serverUrl}/people/${userName}`);
+                const user = await response.json();
+                selectedUser = userName;
+                selectedUserBalance = user[userName];
+
+                document.getElementById('userName').textContent = `Name: ${userName}`;
+                document.getElementById('userBalance').textContent = `Balance: ${selectedUserBalance}`;
+                updateTotal();
+            } catch (error) {
+                console.error('Error fetching user details:', error);
+            }
+        }
+
+        // Update total price and updated balance
+        function updateTotal() {
+            totalPrice = 0;
+            Object.keys(products).forEach(product => {
+                const quantity = parseInt(document.getElementById(`quantity-${product}`).value) || 0;
+                totalPrice += quantity * products[product].price;
+            });
+
+            const updatedBalance = selectedUserBalance - totalPrice;
+            document.getElementById('totalPrice').textContent = totalPrice;
+            document.getElementById('updatedBalance').textContent = updatedBalance >= 0 ? updatedBalance : 'Insufficient funds';
+        }
+
+        // Event listener for product quantity change
+        document.getElementById('productList').addEventListener('input', updateTotal);
+
+        // Handle the purchase
+        async function handlePurchase() {
+            if (selectedUser === '') {
+                alert('Please select a user first.');
+                return;
+            }
+
+            const updatedBalance = selectedUserBalance - totalPrice;
+            if (updatedBalance < 0) {
+                alert('Insufficient balance!');
+                return;
+            }
+
+            // Prepare the purchase data
+            const productsSold = {};
+            Object.keys(products).forEach(product => {
+                const quantity = parseInt(document.getElementById(`quantity-${product}`).value) || 0;
+                if (quantity > 0) {
+                    productsSold[product] = quantity;
+                }
+            });
+            console.log("products: " + JSON.stringify(productsSold))
+
+            // POST request to /products/sold
+            try {
+                const soldResponse = await fetch(`${serverUrl}/products/sold`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(productsSold),
+                });
+
+                if (soldResponse.ok) {
+                    // Update the user's balance
+                    const updateResponse = await fetch(`${serverUrl}/update_person`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ name: selectedUser, balance: updatedBalance }),
+                    });
+
+                    if (updateResponse.ok) {
+                        selectedUserBalance = updatedBalance;
+                        document.getElementById('userBalance').textContent = `Balance: ${updatedBalance}`;
+                        window.location.href = window.location.href;
+
+                    } else {
+                        console.error('Error updating balance:', updateResponse.statusText);
+                    }
+                } else {
+                    console.error('Error processing sale:', soldResponse.statusText);
+                }
+            } catch (error) {
+                console.error('Error handling purchase:', error);
+            }
+        }
+
+        // Event listener for Buy Products button
+        document.getElementById('buyButton').addEventListener('click', handlePurchase);
+
+        // Load initial data
+        loadUsers();
+        loadProducts();
+    </script>
+
+</body>
+
+</html>
