@@ -17,9 +17,6 @@ function logToFile(input, filePath = 'log.txt') {
   });
 }
 
-// Example usage:
-logToFile('This is a test log entry.');
-
 // Register the fastify-static plugin to serve static files
 fastify.register(fastifyStatic, {
     root: path.join(__dirname, 'public'), // Assuming your HTML file is in a "public" folder
@@ -28,14 +25,13 @@ fastify.register(fastifyStatic, {
   
 // Route: Serve home.html when accessing the root "/"
 fastify.get('/', async (request, reply) => {
-    logToFile(request)
     return reply.sendFile('home.html'); // Ensure 'home.html' is in the 'public' folder
 });
 
 // Run the server
 const start = async () => {
   try {
-    await fastify.listen({ port: 3000 });
+    await fastify.listen({ port: 3000, host:"0.0.0.0" });
     console.log('Server running at http://localhost:3000');
   } catch (err) {
     fastify.log.error(err);
@@ -67,14 +63,12 @@ const writeProductData = (data) => {
 
 // Route: Get all people and their balances
 fastify.get('/people', async (request, reply) => {
-  logToFile(request)
   const data = readPeopleData();
   return data;
 });
 
 // Route: Get a list of all products and their prices
 fastify.get('/products', async (request, reply) => {
-  logToFile(request)
   
     // Extract the product names and prices
     const products = readProductData();
@@ -85,7 +79,6 @@ fastify.get('/products', async (request, reply) => {
   // Route: Add to the 'sold' count for a list of products
 fastify.post('/products/sold', async (request, reply) => {
     const productsSold = request.body;
-    logToFile(request)  
     // Example input structure for productsSold:
     /* 
     {
@@ -106,7 +99,7 @@ fastify.post('/products/sold', async (request, reply) => {
     for (const product in productsSold) {
       if (data[product]) {
         data[product].sold += productsSold[product];
-        logToFile("sold " + data[product].sold + " " +data[product])
+        logToFile("sold " + productsSold[product] + " " +product)
       } else {
         return reply.status(404).send({ error: `Product '${product}' not found` });
       }
@@ -132,7 +125,6 @@ fastify.get('/people/:name', async (request, reply) => {
 
 // Route: Add/update a person’s money
 fastify.put('/update_person', async (request, reply) => {
-    console.log(request.body)
     const { name, balance } = request.body;
     console.log(name)
     console.log(balance)
