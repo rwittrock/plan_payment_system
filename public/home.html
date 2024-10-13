@@ -81,6 +81,16 @@
 
 <body>
 
+    <!-- Select2 CSS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
+
+    <!-- jQuery (required by Select2) -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <!-- Select2 JavaScript -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
+
+
     <div class="container">
         <h1>User Balance</h1>
 
@@ -111,7 +121,7 @@
     </div>
 
     <script>
-        const serverUrl = 'http://89.168.82.187:3000';  // Change this to your actual server URL
+        const serverUrl = 'http://localhost:3000';  // Change this to your actual server URL
 
         // Variables to store user data
         let selectedUser = '';
@@ -119,7 +129,6 @@
         let totalPrice = 0;
         let products = {};
 
-        // Load users from backend
         async function loadUsers() {
             try {
                 const response = await fetch(`${serverUrl}/people`);
@@ -128,12 +137,20 @@
 
                 const userSelect = document.getElementById('userSelect');
                 userSelect.innerHTML = '<option value="">Select a user</option>';
+
                 sortedUsers.forEach(userName => {
                     const option = document.createElement('option');
                     option.value = userName;
                     option.textContent = userName;
                     userSelect.appendChild(option);
                 });
+
+                // Initialize Select2 after users are loaded
+                $('#userSelect').select2({
+                    placeholder: 'Select a user',
+                    allowClear: true
+                });
+
             } catch (error) {
                 console.error('Error loading users:', error);
             }
@@ -272,6 +289,7 @@
         loadUsers();
         loadProducts();
     </script>
+
 
 </body>
 
