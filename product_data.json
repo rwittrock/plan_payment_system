@@ -1,15 +1,15 @@
 {
   "Slikkepind": {
     "price": 2,
-    "sold": 0
+    "sold": 2
   },
   "Snickers": {
     "price": 10,
-    "sold": 0
+    "sold": 1
   },
   "Twix": {
     "price": 10,
-    "sold": 0
+    "sold": 1
   },
   "Mars": {
     "price": 10,
@@ -21,7 +21,7 @@
   },
   "Faxe Kondi": {
     "price": 5,
-    "sold": 0
+    "sold": 1
   },
   "Pepsi Max": {
     "price": 5,
@@ -33,6 +33,6 @@
   },
   "Gifflar": {
     "price": 20,
-    "sold": 0
+    "sold": 1
   }
 }
