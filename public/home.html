@@ -2,28 +2,25 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Product System</title>
     <style>
+        /* Page layout: let content grow naturally (no forced 100vh) */
         body {
             font-family: Arial, sans-serif;
             margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
+            padding: 24px 16px;
             background-color: #f7f7f7;
         }
 
         .container {
             display: flex;
             flex-direction: column;
-            min-height: 100vh;
-            max-width: 400px;
+            max-width: 520px;
             width: 100%;
+            margin: 0 auto;
+            /* center horizontally */
             padding: 20px;
             background-color: #fff;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
@@ -34,6 +31,7 @@
         h2 {
             text-align: center;
             color: #333;
+            margin: 10px 0;
         }
 
         .user-select,
@@ -44,19 +42,40 @@
             font-size: 16px;
             border: 1px solid #ccc;
             border-radius: 5px;
+            box-sizing: border-box;
         }
 
         .info,
         .product-list,
         .total-display {
+            width: 100%;
+        }
+
+        .total-display {
             text-align: center;
+            margin: 10px 0 16px;
+        }
+
+        /* Product rows never overflow the card */
+        .product-list-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
             margin-bottom: 10px;
         }
 
-        .product-list-item {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 10px;
+        .product-list-item span {
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .product-quantity {
+            flex: 0 0 140px;
+            width: 140px;
+            /* keep Safari consistent */
         }
 
         button {
@@ -74,10 +93,37 @@
             background-color: #218838;
         }
 
-        @media (max-width: 600px) {
-            .container {
-                padding: 15px;
+        /* Small screens: stack label + input */
+        @media (max-width: 480px) {
+            .product-list-item {
+                flex-direction: column;
+                align-items: stretch;
             }
+
+            .product-list-item span {
+                white-space: normal;
+                text-overflow: clip;
+            }
+
+            .product-quantity {
+                flex: 0 0 auto;
+                width: 100%;
+            }
+        }
+
+        .links {
+            text-align: center;
+            margin: 14px 0 0;
+        }
+
+        .links a {
+            text-decoration: none;
+            color: #2563eb;
+            margin: 0 5px;
+        }
+
+        .links a:hover {
+            text-decoration: underline;
         }
     </style>
 </head>
@@ -92,7 +138,6 @@
 
     <!-- Select2 JavaScript -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
-
 
     <div class="container">
         <h1>User Balance</h1>
@@ -121,16 +166,25 @@
 
         <!-- Button to buy products -->
         <button id="buyButton">Buy Products</button>
+
+        <!-- Admin links stay INSIDE the white box, but outside the product list -->
+        <p class="links">
+            <a href="/people_admin.html">Manage People</a> •
+            <a href="/products_admin.html">Manage Products</a>
+        </p>
     </div>
 
     <script>
-        const serverUrl = 'http://localhost:3000';  // Change this to your actual server URL
+        const serverUrl = 'http://localhost:3000';
 
         // Variables to store user data
         let selectedUser = '';
         let selectedUserBalance = 0;
         let totalPrice = 0;
         let products = {};
+
+        // Make safe element IDs from product names (no spaces/special chars)
+        const safeId = (name) => 'quantity-' + name.toLowerCase().replace(/[^a-z0-9]+/g, '_');
 
         async function loadUsers() {
             try {
@@ -149,26 +203,15 @@
                 });
 
                 // Initialize Select2 after users are loaded
-                $('#userSelect').select2({
-                    placeholder: 'Select a user',
-                    allowClear: true
-                });
-                // Add event listener for when a user is selected
+                $('#userSelect').select2({ placeholder: 'Select a user', allowClear: true });
                 $('#userSelect').on('change', function () {
-                    const selectedUser = $(this).val(); // Get the selected user
-
-                    // Populate other fields based on the selected user
-                    if (selectedUser) {
-                        const userName = this.value;
-                        if (userName) {
-                            fetchUserDetails(userName);
-                        } else {
-                            document.getElementById('userName').textContent = 'Name:';
-                            document.getElementById('userBalance').textContent = 'Balance:';
-                        }
+                    const userName = $(this).val();
+                    if (userName) fetchUserDetails(userName);
+                    else {
+                        document.getElementById('userName').textContent = 'Name:';
+                        document.getElementById('userBalance').textContent = 'Balance:';
                     }
                 });
-
             } catch (error) {
                 console.error('Error loading users:', error);
             }
@@ -185,12 +228,13 @@
 
                 // Display each product with input to choose quantity
                 Object.keys(products).forEach(product => {
+                    const id = safeId(product);
                     const productItem = document.createElement('div');
                     productItem.classList.add('product-list-item');
                     productItem.innerHTML = `
-                    <span>${product} - ${products[product].price}</span>
-                    <input type="number" min="0" value="0" id="quantity-${product}" class="product-quantity" />
-                `;
+            <span>${product} - ${products[product].price}</span>
+            <input type="number" min="0" value="0" id="${id}" class="product-quantity" />
+          `;
                     productList.appendChild(productItem);
                 });
             } catch (error) {
@@ -201,9 +245,8 @@
         // Event listener for user selection
         document.getElementById('userSelect').addEventListener('change', function () {
             const userName = this.value;
-            if (userName) {
-                fetchUserDetails(userName);
-            } else {
+            if (userName) fetchUserDetails(userName);
+            else {
                 document.getElementById('userName').textContent = 'Name:';
                 document.getElementById('userBalance').textContent = 'Balance:';
             }
@@ -212,7 +255,7 @@
         // Fetch selected user's details
         async function fetchUserDetails(userName) {
             try {
-                const response = await fetch(`${serverUrl}/people/${userName}`);
+                const response = await fetch(`${serverUrl}/people/${encodeURIComponent(userName)}`);
                 const user = await response.json();
                 selectedUser = userName;
                 selectedUserBalance = user[userName];
@@ -229,13 +272,16 @@
         function updateTotal() {
             totalPrice = 0;
             Object.keys(products).forEach(product => {
-                const quantity = parseInt(document.getElementById(`quantity-${product}`).value) || 0;
+                const id = safeId(product);
+                const el = document.getElementById(id);
+                const quantity = parseInt(el && el.value, 10) || 0;
                 totalPrice += quantity * products[product].price;
             });
 
             const updatedBalance = selectedUserBalance - totalPrice;
             document.getElementById('totalPrice').textContent = totalPrice;
-            document.getElementById('updatedBalance').textContent = updatedBalance >= 0 ? updatedBalance : 'Insufficient funds';
+            document.getElementById('updatedBalance').textContent =
+                updatedBalance >= 0 ? updatedBalance : 'Insufficient funds';
         }
 
         // Event listener for product quantity change
@@ -257,38 +303,31 @@
             // Prepare the purchase data
             const productsSold = {};
             Object.keys(products).forEach(product => {
-                const quantity = parseInt(document.getElementById(`quantity-${product}`).value) || 0;
-                if (quantity > 0) {
-                    productsSold[product] = quantity;
-                }
+                const id = safeId(product);
+                const quantity = parseInt(document.getElementById(id).value, 10) || 0;
+                if (quantity > 0) productsSold[product] = quantity;
             });
-            console.log("products: " + JSON.stringify(productsSold))
 
-            // POST request to /products/sold
             try {
                 const soldResponse = await fetch(`${serverUrl}/products/sold`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(productsSold),
                 });
 
                 if (soldResponse.ok) {
-                    // Update the user's balance
                     const updateResponse = await fetch(`${serverUrl}/update_person`, {
                         method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ name: selectedUser, balance: updatedBalance }),
                     });
 
                     if (updateResponse.ok) {
                         selectedUserBalance = updatedBalance;
                         document.getElementById('userBalance').textContent = `Balance: ${updatedBalance}`;
-                        window.location.href = window.location.href;
-
+                        // Reset all quantities to 0 after purchase
+                        document.querySelectorAll('.product-quantity').forEach(i => i.value = 0);
+                        updateTotal();
                     } else {
                         console.error('Error updating balance:', updateResponse.statusText);
                     }
@@ -307,8 +346,6 @@
         loadUsers();
         loadProducts();
     </script>
-
-
 </body>
 
 </html>

@@ -1,38 +1,29 @@
 {
-  "Slikkepind": {
-    "price": 2,
-    "sold": 2
-  },
   "Snickers": {
     "price": 10,
-    "sold": 1
-  },
-  "Twix": {
-    "price": 10,
-    "sold": 1
+    "sold": 1,
+    "sold_breakdown": {
+      "10": 1
+    }
   },
   "Mars": {
     "price": 10,
-    "sold": 0
+    "sold": 1,
+    "sold_breakdown": {
+      "10": 1
+    }
   },
-  "Fanta Exotic": {
+  "Cola": {
+    "price": 6,
+    "sold": 2,
+    "sold_breakdown": {
+      "5": 1,
+      "6": 1
+    }
+  },
+  "Fanta": {
     "price": 5,
-    "sold": 0
-  },
-  "Faxe Kondi": {
-    "price": 5,
-    "sold": 1
-  },
-  "Pepsi Max": {
-    "price": 5,
-    "sold": 0
-  },
-  "Coca Cola": {
-    "price": 2,
-    "sold": 0
-  },
-  "Gifflar": {
-    "price": 20,
-    "sold": 1
+    "sold": 0,
+    "sold_breakdown": {}
   }
 }

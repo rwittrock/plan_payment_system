@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Admin • Products</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f7f7f7;
+            margin: 0;
+            padding: 24px;
+        }
+
+        .card {
+            max-width: 760px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        h1 {
+            margin-top: 0;
+            text-align: center;
+        }
+
+        label {
+            display: block;
+            margin: 12px 0 6px;
+            font-weight: bold;
+        }
+
+        input,
+        select,
+        button {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+
+        .row {
+            display: grid;
+            grid-template-columns: 1fr 160px 120px;
+            gap: 10px;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .actions button {
+            flex: 1;
+        }
+
+        button.primary {
+            background: #2563eb;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+        }
+
+        button.primary:hover {
+            background: #1e4fd6;
+        }
+
+        button.delete {
+            background: #991b1b;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+        }
+
+        button.delete:hover {
+            background: #7f1515;
+        }
+
+        .msg {
+            margin-top: 10px;
+            font-size: 14px;
+        }
+
+        .ok {
+            color: #166534;
+        }
+
+        .err {
+            color: #991b1b;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 14px;
+            font-size: 14px;
+        }
+
+        th,
+        td {
+            border-bottom: 1px solid #eee;
+            padding: 8px;
+            text-align: left;
+        }
+
+        .meta {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .back {
+            display: block;
+            margin-top: 12px;
+            text-decoration: none;
+            color: #111827;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <h1>Manage Products</h1>
+
+        <label for="selectProduct">Select product to edit</label>
+        <select id="selectProduct">
+            <option value="">— New product —</option>
+        </select>
+
+        <div class="row">
+            <div>
+                <label for="pname">Product name</label>
+                <input id="pname" placeholder="e.g., Snickers" />
+            </div>
+            <div>
+                <label for="pprice">Current price</label>
+                <input id="pprice" type="number" step="1" min="0" placeholder="e.g., 10" />
+            </div>
+            <div class="actions" style="align-self:end;">
+                <button id="saveBtn" class="primary">Save</button>
+                <button id="deleteBtn" class="delete" title="Delete selected product">Delete</button>
+            </div>
+        </div>
+
+        <div class="meta">
+            <div><strong>Total sold:</strong> <span id="metaSold">0</span></div>
+            <div><strong>Price selected:</strong> <span id="metaPrice">—</span></div>
+            <div><strong>Unique price points:</strong> <span id="metaUnique">0</span></div>
+        </div>
+
+        <table id="breakdownTable" style="display:none;">
+            <thead>
+                <tr>
+                    <th>Price</th>
+                    <th>Sold</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+
+        <div id="msg" class="msg"></div>
+
+        <a class="back" href="/">← Back to main</a>
+    </div>
+
+    <script>
+        const serverUrl = location.origin;
+
+        let allProducts = {};
+        let selectedName = "";
+
+        function resetForm(keepSelection = false) {
+            if (!keepSelection) document.getElementById("selectProduct").value = "";
+            document.getElementById("pname").value = "";
+            document.getElementById("pprice").value = "";
+            document.getElementById("metaSold").textContent = "0";
+            document.getElementById("metaPrice").textContent = "—";
+            document.getElementById("metaUnique").textContent = "0";
+            const tbl = document.getElementById("breakdownTable");
+            tbl.style.display = "none";
+            tbl.querySelector("tbody").innerHTML = "";
+            selectedName = "";
+        }
+
+        async function loadProducts() {
+            const res = await fetch(serverUrl + "/products");
+            allProducts = await res.json();
+
+            const select = document.getElementById("selectProduct");
+            const current = select.value;
+            select.innerHTML = '<option value="">— New product —</option>';
+
+            Object.keys(allProducts).sort((a, b) => a.localeCompare(b)).forEach(n => {
+                const opt = document.createElement("option");
+                opt.value = n; opt.textContent = n;
+                select.appendChild(opt);
+            });
+
+            // restore selection if possible
+            if (current && allProducts[current]) select.value = current;
+            else resetForm(true);
+
+            if (select.value) populateFields(select.value);
+        }
+
+        function populateFields(name) {
+            const p = allProducts[name];
+            if (!p) return;
+
+            selectedName = name;
+            document.getElementById("pname").value = name;
+            document.getElementById("pprice").value = p.price ?? "";
+            document.getElementById("metaSold").textContent = p.sold ?? 0;
+            document.getElementById("metaPrice").textContent = p.price ?? "—";
+
+            const bd = p.sold_breakdown || {};
+            const entries = Object.entries(bd).sort((a, b) => Number(a[0]) - Number(b[0]));
+            document.getElementById("metaUnique").textContent = entries.length;
+
+            const tbody = document.querySelector("#breakdownTable tbody");
+            tbody.innerHTML = entries.map(([price, qty]) => `<tr><td>${price}</td><td>${qty}</td></tr>`).join("");
+            document.getElementById("breakdownTable").style.display = entries.length ? "table" : "none";
+        }
+
+        document.getElementById("selectProduct").addEventListener("change", (e) => {
+            const name = e.target.value;
+            if (!name) {
+                resetForm(true);
+            } else {
+                populateFields(name);
+            }
+            document.getElementById("msg").textContent = "";
+            document.getElementById("msg").className = "msg";
+        });
+
+        async function saveProduct() {
+            const name = document.getElementById("pname").value.trim();
+            const price = Number(document.getElementById("pprice").value);
+
+            const msg = document.getElementById("msg");
+            if (!name || Number.isNaN(price) || price < 0) {
+                msg.textContent = "Please provide a valid name and non-negative price.";
+                msg.className = "msg err";
+                return;
+            }
+
+            const res = await fetch(serverUrl + "/products/upsert", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name, price })
+            });
+
+            if (res.ok) {
+                const j = await res.json();
+                msg.textContent = j.message || "Saved.";
+                msg.className = "msg ok";
+                await loadProducts();
+                document.getElementById("selectProduct").value = name;
+                populateFields(name);
+            } else {
+                msg.textContent = "Error saving product.";
+                msg.className = "msg err";
+            }
+        }
+
+        async function deleteProduct() {
+            const name = document.getElementById("selectProduct").value;
+            const msg = document.getElementById("msg");
+
+            if (!name) {
+                msg.textContent = "Select a product to delete.";
+                msg.className = "msg err";
+                return;
+            }
+            if (!confirm(`Delete product "${name}"?`)) return;
+
+            const res = await fetch(serverUrl + "/products/" + encodeURIComponent(name), { method: "DELETE" });
+            if (res.ok) {
+                msg.textContent = `Deleted '${name}'.`;
+                msg.className = "msg ok";
+                await loadProducts();
+                resetForm();
+            } else {
+                msg.textContent = `Failed to delete '${name}'.`;
+                msg.className = "msg err";
+            }
+        }
+
+        document.getElementById("saveBtn").addEventListener("click", saveProduct);
+        document.getElementById("deleteBtn").addEventListener("click", deleteProduct);
+
+        loadProducts();
+    </script>
+</body>
+
+</html>

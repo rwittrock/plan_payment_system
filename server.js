@@ -76,40 +76,38 @@ fastify.get('/products', async (request, reply) => {
 });
 
   
-  // Route: Add to the 'sold' count for a list of products
 fastify.post('/products/sold', async (request, reply) => {
-    const productsSold = request.body;
-    // Example input structure for productsSold:
-    /* 
-    {
-        "productsSold": {
-            "snickers": 5,
-            "beer": 10
-        }
+  const productsSold = request.body;
+  if (!productsSold || typeof productsSold !== 'object') {
+    return reply.status(400).send({ error: 'Invalid input' });
+  }
+
+  const data = readProductData();
+
+  for (const product in productsSold) {
+    if (data[product]) {
+      const qty = Number(productsSold[product]) || 0;
+      if (qty <= 0) continue;
+
+      // total sold
+      data[product].sold = (data[product].sold || 0) + qty;
+
+      // ensure breakdown
+      if (!data[product].sold_breakdown) data[product].sold_breakdown = {};
+      const currentPriceKey = String(data[product].price ?? 0);
+      data[product].sold_breakdown[currentPriceKey] =
+        (data[product].sold_breakdown[currentPriceKey] || 0) + qty;
+
+      logToFile(`sold ${qty} ${product} @ ${currentPriceKey}`);
+    } else {
+      return reply.status(404).send({ error: `Product '${product}' not found` });
     }
-    */
-  
-    if (!productsSold || typeof productsSold !== 'object') {
-      return reply.status(400).send({ error: 'Invalid input' });
-    }
-  
-    const data = readProductData();
-  
-    // Iterate over the provided product names and sold amounts
-    for (const product in productsSold) {
-      if (data[product]) {
-        data[product].sold += productsSold[product];
-        logToFile("sold " + productsSold[product] + " " +product)
-      } else {
-        return reply.status(404).send({ error: `Product '${product}' not found` });
-      }
-    }
-  
-    // Write the updated data back to the JSON file
-    writeProductData(data);
-  
-    return { message: 'Sold counts updated successfully' };
+  }
+
+  writeProductData(data);
+  return { message: 'Sold counts updated successfully' };
 });
+
 
 // Route: Get a specific person’s balance
 fastify.get('/people/:name', async (request, reply) => {
@@ -141,6 +139,54 @@ fastify.put('/update_person', async (request, reply) => {
     return { message: `${name}'s balance updated to ${balance}` };
 });
 
+// =====================
+// NEW: PRODUCTS UPSERT
+// Create or update a product's price (preserves 'sold')
+// Body: { name: "Snickers", price: 12 }
+// =====================
+fastify.put('/products/upsert', async (request, reply) => {
+  const { name, price } = request.body || {};
+  if (!name || typeof price !== 'number' || price < 0) {
+    return reply.status(400).send({ error: "Invalid input. Provide { name, price:number>=0 }" });
+  }
+
+  const data = readProductData();
+
+  if (!data[name]) {
+    data[name] = { price, sold: 0, sold_breakdown: {} };
+    logToFile(`product created '${name}' @ ${price}`);
+  } else {
+    // ensure keys exist for older records
+    if (typeof data[name].sold !== 'number') data[name].sold = 0;
+    if (!data[name].sold_breakdown) data[name].sold_breakdown = {};
+    // update the price (history is handled when recording sales)
+    data[name].price = price;
+    logToFile(`product updated '${name}' price -> ${price}`);
+  }
+
+  writeProductData(data);
+  return { message: `Product '${name}' saved`, product: data[name] };
+});
+
+
+// =====================
+// NEW: DELETE PRODUCT
+// Remove a product by name
+// =====================
+fastify.delete('/products/:name', async (request, reply) => {
+  const { name } = request.params;
+  const data = readProductData();
+
+  if (!data[name]) {
+    return reply.status(404).send({ error: `Product '${name}' not found` });
+  }
+
+  delete data[name];
+  writeProductData(data);
+  logToFile(`product deleted '${name}'`);
+
+  return { message: `Product '${name}' deleted` };
+});
 
 
 // Run the server
