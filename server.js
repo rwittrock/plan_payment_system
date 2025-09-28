@@ -1,193 +1,271 @@
-// server.js
 const fs = require('fs');
 const path = require('path');
 const fastify = require('fastify')({ logger: true });
 const fastifyStatic = require('@fastify/static');
-const { log } = require('console');
+const fastifyCors = require('@fastify/cors');
 
-function logToFile(input, filePath = 'log.txt') {
-  const logFile = path.join(__dirname, filePath); // Define the log file location
-  const timestamp = new Date().toISOString(); // Get the current timestamp
-  const logEntry = `${timestamp} - ${input}\n`; // Format the log entry
+// Register CORS + static
+fastify.register(fastifyCors, { origin: true });
+fastify.register(fastifyStatic, { root: path.join(__dirname, 'public'), prefix: '/' });
 
-  fs.appendFile(logFile, logEntry, (err) => {
-      if (err) {
-          console.error('Error writing to log file:', err);
-      } 
-  });
+// JSON file paths
+const peopleFile = path.join(__dirname, 'people_data.json');
+const productFile = path.join(__dirname, 'product_data.json');
+const teamPeopleFile = path.join(__dirname, 'team_people_data.json');
+const teamProductFile = path.join(__dirname, 'team_product_data.json');
+const transactionsFile = path.join(__dirname, 'transactions.json');
+
+// Helpers
+const readJson = (f) => JSON.parse(fs.readFileSync(f, 'utf-8'));
+const writeJson = (f, d) => fs.writeFileSync(f, JSON.stringify(d, null, 2));
+
+// Transactions
+function readTransactions() { try { return readJson(transactionsFile); } catch { return []; } }
+function writeTransactions(data) { writeJson(transactionsFile, data); }
+function addTransaction({ menu, user, lines, total, balanceAfter }) {
+  const txs = readTransactions();
+  const id = Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+  const entry = {
+    id,
+    timestamp: new Date().toISOString(),
+    menu,       // "pos" | "team"
+    user,
+    lines,      // [{ product, qty, unit_price, line_total }]
+    total,      // sum(lines.line_total)
+    balanceAfter,
+    refunded: false,
+  };
+  txs.push(entry);
+  writeTransactions(txs);
+  return entry;
 }
 
-// Register the fastify-static plugin to serve static files
-fastify.register(fastifyStatic, {
-    root: path.join(__dirname, 'public'), // Assuming your HTML file is in a "public" folder
-    prefix: '/', // Optional: to serve files from the root
-  });
-  
-// Route: Serve home.html when accessing the root "/"
-fastify.get('/', async (request, reply) => {
-    return reply.sendFile('home.html'); // Ensure 'home.html' is in the 'public' folder
+// Serve main page
+fastify.get('/', async (req, reply) => reply.sendFile('home.html'));
+
+// ===== POS People =====
+fastify.get('/people', async () => readJson(peopleFile));
+fastify.get('/people/:name', async (req, reply) => {
+  const { name } = req.params;
+  const people = readJson(peopleFile);
+  if (people[name] !== undefined) return { [name]: people[name] };
+  reply.status(404).send({ error: 'Person not found' });
+});
+fastify.put('/people', async (req, reply) => {
+  const { name, balance } = req.body || {};
+  if (!name || typeof balance !== 'number') return reply.status(400).send({ error: 'Invalid' });
+  const people = readJson(peopleFile);
+  people[name] = balance;
+  writeJson(peopleFile, people);
+  return { message: `${name} updated`, balance };
 });
 
-// Run the server
-const start = async () => {
-  try {
-    await fastify.listen({ port: 3000, host:"0.0.0.0" });
-    console.log('Server running at http://localhost:3000');
-  } catch (err) {
-    fastify.log.error(err);
-    process.exit(1);
-  }
-};
+// ===== POS Products =====
+fastify.get('/products', async () => readJson(productFile));
 
-// Path to the JSON file
-const peopleDataFilePath = path.join(__dirname, 'people_data.json');
-const productsDataFilePath = path.join(__dirname, 'product_data.json');
-
-// Helper function to read the JSON file
-const readPeopleData = () => {
-  const data = fs.readFileSync(peopleDataFilePath);
-  return JSON.parse(data);
-};
-const readProductData = () => {
-    const data = fs.readFileSync(productsDataFilePath);
-    return JSON.parse(data);
-  };
-// Helper function to write data back to the JSON file
-const writePeopleData = (data) => {
-  fs.writeFileSync(peopleDataFilePath, JSON.stringify(data, null, 2));
-};
-// Helper function to write product data back to the JSON file
-const writeProductData = (data) => {
-    fs.writeFileSync(productsDataFilePath, JSON.stringify(data, null, 2));
-  };
-
-// Route: Get all people and their balances
-fastify.get('/people', async (request, reply) => {
-  const data = readPeopleData();
-  return data;
-});
-
-// Route: Get a list of all products and their prices
-fastify.get('/products', async (request, reply) => {
-  
-    // Extract the product names and prices
-    const products = readProductData();
-    return products;
-});
-
-  
-fastify.post('/products/sold', async (request, reply) => {
-  const productsSold = request.body;
-  if (!productsSold || typeof productsSold !== 'object') {
-    return reply.status(400).send({ error: 'Invalid input' });
-  }
-
-  const data = readProductData();
-
-  for (const product in productsSold) {
-    if (data[product]) {
-      const qty = Number(productsSold[product]) || 0;
-      if (qty <= 0) continue;
-
-      // total sold
-      data[product].sold = (data[product].sold || 0) + qty;
-
-      // ensure breakdown
-      if (!data[product].sold_breakdown) data[product].sold_breakdown = {};
-      const currentPriceKey = String(data[product].price ?? 0);
-      data[product].sold_breakdown[currentPriceKey] =
-        (data[product].sold_breakdown[currentPriceKey] || 0) + qty;
-
-      logToFile(`sold ${qty} ${product} @ ${currentPriceKey}`);
-    } else {
-      return reply.status(404).send({ error: `Product '${product}' not found` });
-    }
-  }
-
-  writeProductData(data);
-  return { message: 'Sold counts updated successfully' };
-});
-
-
-// Route: Get a specific person’s balance
-fastify.get('/people/:name', async (request, reply) => {
-  const { name } = request.params;
-  const data = readPeopleData();
-
-  if (data[name]) {
-    return { [name]: data[name] };
-  } else {
-    reply.status(404).send({ error: 'Person not found' });
-  }
-});
-
-// Route: Add/update a person’s money
-fastify.put('/update_person', async (request, reply) => {
-    const { name, balance } = request.body;
-    console.log(name)
-    console.log(balance)
-    
-    if (!name || typeof balance !== 'number') {
-        return reply.status(400).send({ error: 'Invalid input' });
-    }
-
-    const data = readPeopleData();
-    data[name] = balance;
-    writePeopleData(data);
-    logToFile(name + "'s balance set to " + balance)
-
-    return { message: `${name}'s balance updated to ${balance}` };
-});
-
-// =====================
-// NEW: PRODUCTS UPSERT
-// Create or update a product's price (preserves 'sold')
-// Body: { name: "Snickers", price: 12 }
-// =====================
-fastify.put('/products/upsert', async (request, reply) => {
-  const { name, price } = request.body || {};
+// create/update (upsert)
+fastify.put('/products/upsert', async (req, reply) => {
+  const { name, price, image } = req.body || {};
   if (!name || typeof price !== 'number' || price < 0) {
-    return reply.status(400).send({ error: "Invalid input. Provide { name, price:number>=0 }" });
+    return reply.status(400).send({ error: 'Provide valid name and non-negative price' });
   }
-
-  const data = readProductData();
-
-  if (!data[name]) {
-    data[name] = { price, sold: 0, sold_breakdown: {} };
-    logToFile(`product created '${name}' @ ${price}`);
+  const products = readJson(productFile);
+  if (!products[name]) {
+    products[name] = { price, sold: 0 };
   } else {
-    // ensure keys exist for older records
-    if (typeof data[name].sold !== 'number') data[name].sold = 0;
-    if (!data[name].sold_breakdown) data[name].sold_breakdown = {};
-    // update the price (history is handled when recording sales)
-    data[name].price = price;
-    logToFile(`product updated '${name}' price -> ${price}`);
+    products[name].price = price;
+    // image: allow set/clear
   }
-
-  writeProductData(data);
-  return { message: `Product '${name}' saved`, product: data[name] };
+  if (image === '') {
+    delete products[name].image;
+  } else if (typeof image === 'string') {
+    products[name].image = image;
+  }
+  writeJson(productFile, products);
+  return { message: 'Product upserted', product: { [name]: products[name] } };
 });
 
-
-// =====================
-// NEW: DELETE PRODUCT
-// Remove a product by name
-// =====================
-fastify.delete('/products/:name', async (request, reply) => {
-  const { name } = request.params;
-  const data = readProductData();
-
-  if (!data[name]) {
-    return reply.status(404).send({ error: `Product '${name}' not found` });
-  }
-
-  delete data[name];
-  writeProductData(data);
-  logToFile(`product deleted '${name}'`);
-
-  return { message: `Product '${name}' deleted` };
+// delete
+fastify.delete('/products/:name', async (req, reply) => {
+  const { name } = req.params;
+  const products = readJson(productFile);
+  if (!products[name]) return reply.status(404).send({ error: 'Product not found' });
+  delete products[name];
+  writeJson(productFile, products);
+  return { message: 'Product deleted' };
 });
 
+// ===== POS Order (accurate line items) =====
+fastify.post('/order', async (req, reply) => {
+  const { name, items } = req.body || {};
+  if (!name || !items || typeof items !== 'object') return reply.status(400).send({ error: 'Missing data' });
 
-// Run the server
-start();
+  const people = readJson(peopleFile);
+  if (people[name] === undefined) return reply.status(404).send({ error: 'Person not found' });
+
+  const products = readJson(productFile);
+  const lines = [];
+  for (const [prod, qtyRaw] of Object.entries(items)) {
+    const qty = Math.max(0, Number(qtyRaw) || 0);
+    if (qty <= 0) continue;
+    const p = products[prod];
+    if (!p) return reply.status(404).send({ error: `Unknown product: ${prod}` });
+    const unit_price = Number(p.price) || 0;
+    const line_total = unit_price * qty;
+    lines.push({ product: prod, qty, unit_price, line_total });
+  }
+  const total = lines.reduce((s, l) => s + l.line_total, 0);
+  if (people[name] < total) return reply.status(400).send({ error: 'Insufficient funds' });
+
+  for (const l of lines) {
+    products[l.product].sold = Math.max(0, Number(products[l.product].sold) || 0) + l.qty;
+  }
+  people[name] -= total;
+
+  writeJson(peopleFile, people);
+  writeJson(productFile, products);
+
+  const tx = addTransaction({ menu: 'pos', user: name, lines, total, balanceAfter: people[name] });
+  return { message: 'Order complete', balance: people[name], transaction: tx };
+});
+
+// ===== TEAM People =====
+fastify.get('/team_people', async () => readJson(teamPeopleFile));
+fastify.get('/team_people/:name', async (req, reply) => {
+  const { name } = req.params;
+  const people = readJson(teamPeopleFile);
+  if (people[name] !== undefined) return { [name]: people[name] };
+  reply.status(404).send({ error: 'Team member not found' });
+});
+fastify.put('/team_people', async (req, reply) => {
+  const { name, balance } = req.body || {};
+  if (!name || typeof balance !== 'number') return reply.status(400).send({ error: 'Invalid' });
+  const people = readJson(teamPeopleFile);
+  people[name] = balance;
+  writeJson(teamPeopleFile, people);
+  return { message: `${name} updated`, balance };
+});
+
+// ===== TEAM Products =====
+fastify.get('/team_products', async () => readJson(teamProductFile));
+
+// create/update (upsert)
+fastify.put('/team_products/upsert', async (req, reply) => {
+  const { name, price, image } = req.body || {};
+  if (!name || typeof price !== 'number' || price < 0) {
+    return reply.status(400).send({ error: 'Provide valid name and non-negative price' });
+  }
+  const products = readJson(teamProductFile);
+  if (!products[name]) {
+    products[name] = { price, sold: 0 };
+  } else {
+    products[name].price = price;
+  }
+  if (image === '') {
+    delete products[name].image;
+  } else if (typeof image === 'string') {
+    products[name].image = image;
+  }
+  writeJson(teamProductFile, products);
+  return { message: 'Team product upserted', product: { [name]: products[name] } };
+});
+
+// delete
+fastify.delete('/team_products/:name', async (req, reply) => {
+  const { name } = req.params;
+  const products = readJson(teamProductFile);
+  if (!products[name]) return reply.status(404).send({ error: 'Product not found' });
+  delete products[name];
+  writeJson(teamProductFile, products);
+  return { message: 'Team product deleted' };
+});
+
+// ===== TEAM Order =====
+fastify.post('/team/order', async (req, reply) => {
+  const { name, items } = req.body || {};
+  if (!name || !items || typeof items !== 'object') return reply.status(400).send({ error: 'Missing data' });
+
+  const people = readJson(teamPeopleFile);
+  if (people[name] === undefined) return reply.status(404).send({ error: 'Team member not found' });
+
+  const products = readJson(teamProductFile);
+  const lines = [];
+  for (const [prod, qtyRaw] of Object.entries(items)) {
+    const qty = Math.max(0, Number(qtyRaw) || 0);
+    if (qty <= 0) continue;
+    const p = products[prod];
+    if (!p) return reply.status(404).send({ error: `Unknown product: ${prod}` });
+    const unit_price = Number(p.price) || 0;
+    const line_total = unit_price * qty;
+    lines.push({ product: prod, qty, unit_price, line_total });
+  }
+  const total = lines.reduce((s, l) => s + l.line_total, 0);
+  if (people[name] < total) return reply.status(400).send({ error: 'Insufficient funds' });
+
+  for (const l of lines) {
+    products[l.product].sold = Math.max(0, Number(products[l.product].sold) || 0) + l.qty;
+  }
+  people[name] -= total;
+
+  writeJson(teamPeopleFile, people);
+  writeJson(teamProductFile, products);
+
+  const tx = addTransaction({ menu: 'team', user: name, lines, total, balanceAfter: people[name] });
+  return { message: 'Team order complete', balance: people[name], transaction: tx };
+});
+
+// ===== Transactions & Reports =====
+fastify.get('/transactions', async () => readTransactions());
+
+fastify.post('/transactions/refund/:id', async (req, reply) => {
+  const { id } = req.params;
+  const txs = readTransactions();
+  const tx = txs.find(t => t.id === id);
+  if (!tx) return reply.status(404).send({ error: 'Transaction not found' });
+  if (tx.refunded) return reply.status(400).send({ error: 'Already refunded' });
+
+  const peoplePath = tx.menu === 'team' ? teamPeopleFile : peopleFile;
+  const productsPath = tx.menu === 'team' ? teamProductFile : productFile;
+
+  const people = readJson(peoplePath);
+  if (people[tx.user] === undefined) return reply.status(404).send({ error: 'User not found' });
+  people[tx.user] += Number(tx.total) || 0;
+  writeJson(peoplePath, people);
+
+  const products = readJson(productsPath);
+  for (const l of tx.lines || []) {
+    if (products[l.product]) {
+      products[l.product].sold = Math.max(0, Number(products[l.product].sold) || 0) - Number(l.qty || 0);
+      if (products[l.product].sold < 0) products[l.product].sold = 0;
+    }
+  }
+  writeJson(productsPath, products);
+
+  tx.refunded = true;
+  writeTransactions(txs);
+  return { message: 'Refund complete', transaction: tx };
+});
+
+fastify.get('/reports/users', async () => {
+  const tally = {};
+  for (const tx of readTransactions()) {
+    if (tx.refunded) continue;
+    tally[tx.user] = (tally[tx.user] || 0) + (Number(tx.total) || 0);
+  }
+  return tally;
+});
+fastify.get('/reports/products', async () => {
+  const tally = {};
+  for (const tx of readTransactions()) {
+    if (tx.refunded) continue;
+    for (const l of (tx.lines || [])) {
+      tally[l.product] = (tally[l.product] || 0) + Number(l.qty || 0);
+    }
+  }
+  return tally;
+});
+
+// Start server
+fastify.listen({ port: 3000, host: "0.0.0.0" })
+  .then(() => console.log("Server running at http://localhost:3000"))
+  .catch(err => { fastify.log.error(err); process.exit(1); });

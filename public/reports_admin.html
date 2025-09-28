@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Reports Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f7f7f7;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, .1);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            margin-top: 30px;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        th,
+        td {
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background: #eee;
+        }
+
+        canvas {
+            max-width: 100%;
+            margin-top: 20px;
+        }
+
+        .back {
+            display: block;
+            text-align: center;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Reports Dashboard</h1>
+        <button onclick="loadReports()">🔄 Refresh</button>
+
+        <h2>Totals per User</h2>
+        <table id="userTable">
+            <thead>
+                <tr>
+                    <th>User</th>
+                    <th>Total Spent</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        <canvas id="userChart" height="100"></canvas>
+
+        <h2>Totals per Product</h2>
+        <table id="productTable">
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th>Units Sold</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        <canvas id="productChart" height="100"></canvas>
+
+        <a class="back" href="/">← Back to POS</a>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const serverUrl = location.origin;
+        let userChart, productChart;
+
+        async function loadReports() {
+            const [usersRes, productsRes] = await Promise.all([
+                fetch(serverUrl + '/reports/users'),
+                fetch(serverUrl + '/reports/products')
+            ]);
+            const users = await usersRes.json();
+            const products = await productsRes.json();
+
+            const utBody = document.querySelector('#userTable tbody');
+            utBody.innerHTML = '';
+            Object.entries(users).forEach(([name, total]) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${name}</td><td>${total}</td>`;
+                utBody.appendChild(tr);
+            });
+
+            const ptBody = document.querySelector('#productTable tbody');
+            ptBody.innerHTML = '';
+            Object.entries(products).forEach(([prod, qty]) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${prod}</td><td>${qty}</td>`;
+                ptBody.appendChild(tr);
+            });
+
+            if (userChart) userChart.destroy();
+            if (productChart) productChart.destroy();
+            userChart = new Chart(document.getElementById('userChart'), {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(users),
+                    datasets: [{ label: 'Total Spent', data: Object.values(users), backgroundColor: '#2563eb' }]
+                },
+                options: { responsive: true, plugins: { legend: { display: false } } }
+            });
+            productChart = new Chart(document.getElementById('productChart'), {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(products),
+                    datasets: [{ label: 'Units Sold', data: Object.values(products), backgroundColor: '#28a745' }]
+                },
+                options: { responsive: true, plugins: { legend: { display: false } } }
+            });
+        }
+
+        loadReports();
+        setInterval(loadReports, 5000);
+    </script>
+</body>
+
+</html>

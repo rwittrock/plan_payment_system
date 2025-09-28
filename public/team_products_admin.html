@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Products Admin (POS)</title>
+    <title>Team Products Admin</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -108,7 +108,7 @@
 
 <body>
     <div class="container">
-        <h1>Products Admin (POS)</h1>
+        <h1>Team Products Admin</h1>
 
         <div class="grid">
             <div>
@@ -116,13 +116,13 @@
                 <select id="selectProduct"></select>
 
                 <label for="name">Name</label>
-                <input id="name" placeholder="e.g., Snickers" />
+                <input id="name" placeholder="e.g., Energy Drink" />
 
                 <label for="price">Price</label>
-                <input id="price" type="number" step="0.01" min="0" placeholder="e.g., 10" />
+                <input id="price" type="number" step="0.01" min="0" placeholder="e.g., 15" />
 
-                <label for="image">Image URL <span class="small">(optional; leave empty to keep; set to empty then Save
-                        to clear)</span></label>
+                <label for="image">Image URL <span class="small">(optional; leave empty to keep; set empty then Save to
+                        clear)</span></label>
                 <input id="image" type="url" placeholder="https://... or /images/..." />
 
                 <button id="save" class="primary">Save / Update</button>
@@ -142,7 +142,7 @@
                     </thead>
                     <tbody></tbody>
                 </table>
-                <p class="small">Sold is updated by purchases/refunds. You can change name/price/image here.</p>
+                <p class="small">Sold is updated by purchases/refunds. Change name/price/image here.</p>
             </div>
         </div>
 
@@ -170,7 +170,7 @@
         }
 
         async function loadList() {
-            const r = await fetch(serverUrl + '/products');
+            const r = await fetch(serverUrl + '/team_products');
             state = await r.json();
             const tb = document.querySelector('#tbl tbody'); tb.textContent = '';
             const sel = document.getElementById('selectProduct'); sel.innerHTML = '<option value="">— New —</option>';
@@ -195,7 +195,7 @@
             const msg = document.getElementById('msg');
             if (!n || Number.isNaN(pr) || pr < 0) { msg.textContent = 'Enter valid name and price'; return; }
 
-            const res = await fetch(serverUrl + '/products/upsert', {
+            const res = await fetch(serverUrl + '/team_products/upsert', {
                 method: 'PUT', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name: n, price: pr, image: img })
             });
@@ -209,7 +209,7 @@
             const msg = document.getElementById('msg');
             if (!p) { msg.textContent = 'Select a product to delete'; return; }
             if (!confirm('Delete product "' + p + '"?')) return;
-            const res = await fetch(serverUrl + '/products/' + encodeURIComponent(p), { method: 'DELETE' });
+            const res = await fetch(serverUrl + '/team_products/' + encodeURIComponent(p), { method: 'DELETE' });
             msg.textContent = res.ok ? 'Deleted' : ('Error: ' + await res.text());
             name.value = ''; price.value = ''; image.value = ''; selectProduct.value = '';
             await loadList();

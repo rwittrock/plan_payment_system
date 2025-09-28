@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <title>Transactions Admin</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f7f7f7;
+            padding: 20px;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            background: #fff;
+        }
+
+        th,
+        td {
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        th {
+            background: #eee;
+        }
+
+        button {
+            padding: 4px 8px;
+        }
+
+        .refunded {
+            color: #888;
+            text-decoration: line-through;
+        }
+
+        .muted {
+            color: #666;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>All Transactions</h1>
+    <button onclick="loadTx()">🔄 Refresh</button>
+    <table id="txTable">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Date</th>
+                <th>Menu</th>
+                <th>User</th>
+                <th>Items</th>
+                <th>Total</th>
+                <th>Status</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <script>
+        const serverUrl = location.origin;
+        function fmtItems(lines) {
+            if (!Array.isArray(lines)) return '';
+            return lines.map(l => `${l.product} × ${l.qty} @ ${l.unit_price} = ${l.line_total}`).join('<br/>');
+        }
+        async function loadTx() {
+            const res = await fetch(serverUrl + '/transactions');
+            const txs = await res.json();
+            const tbody = document.querySelector('#txTable tbody');
+            tbody.innerHTML = '';
+            txs.forEach(tx => {
+                const tr = document.createElement('tr');
+                const tdId = document.createElement('td'); tdId.textContent = tx.id;
+                const tdDate = document.createElement('td'); tdDate.textContent = new Date(tx.timestamp).toLocaleString();
+                const tdMenu = document.createElement('td'); tdMenu.textContent = tx.menu;
+                const tdUser = document.createElement('td'); tdUser.textContent = tx.user;
+                const tdItems = document.createElement('td'); tdItems.innerHTML = fmtItems(tx.lines);
+                const tdTotal = document.createElement('td'); tdTotal.textContent = Number(tx.total || 0);
+                const tdStatus = document.createElement('td'); tdStatus.textContent = tx.refunded ? 'Refunded' : 'OK'; if (tx.refunded) tdStatus.className = 'refunded';
+                const tdAct = document.createElement('td');
+                if (!tx.refunded) {
+                    const btn = document.createElement('button'); btn.textContent = 'Refund'; btn.addEventListener('click', () => refund(tx.id));
+                    tdAct.appendChild(btn);
+                } else {
+                    const s = document.createElement('span'); s.textContent = '—'; s.className = 'muted'; tdAct.appendChild(s);
+                }
+                tr.append(tdId, tdDate, tdMenu, tdUser, tdItems, tdTotal, tdStatus, tdAct);
+                tbody.appendChild(tr);
+            });
+        }
+        async function refund(id) {
+            if (!confirm('Refund transaction ' + id + '?')) return;
+            const res = await fetch(serverUrl + '/transactions/refund/' + id, { method: 'POST' });
+            if (res.ok) { loadTx(); } else { alert('Error: ' + await res.text()); }
+        }
+        loadTx(); setInterval(loadTx, 5000);
+    </script>
+</body>
+
+</html>

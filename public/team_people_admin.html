@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>People Admin</title>
+    <title>Team People Admin</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -59,8 +59,8 @@
 
 <body>
     <div class="container">
-        <h1>People Admin</h1>
-        <label for="selectPerson">Select Person</label>
+        <h1>Team People Admin</h1>
+        <label for="selectPerson">Select Team Member</label>
         <select id="selectPerson"></select>
 
         <label for="personName">Name</label>
@@ -76,20 +76,20 @@
     <script>
         const serverUrl = location.origin;
         async function loadPeople() {
-            const res = await fetch(serverUrl + '/people'); const data = await res.json();
+            const res = await fetch(serverUrl + '/team_people'); const data = await res.json();
             const sel = document.getElementById('selectPerson'); sel.innerHTML = '<option value="">— New —</option>';
             Object.keys(data).sort().forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n; sel.appendChild(o); });
         }
         async function populate(name) {
             if (!name) { personName.value = ''; personBalance.value = ''; return; }
-            const r = await fetch(serverUrl + '/people/' + encodeURIComponent(name));
+            const r = await fetch(serverUrl + '/team_people/' + encodeURIComponent(name));
             if (r.ok) { const d = await r.json(); personName.value = name; personBalance.value = d[name]; }
         }
         selectPerson.addEventListener('change', e => populate(e.target.value));
         saveBtn.addEventListener('click', async () => {
             const name = personName.value.trim(); const balance = Number(personBalance.value);
             if (!name || Number.isNaN(balance)) { msg.textContent = 'Provide name and balance'; return; }
-            const r = await fetch(serverUrl + '/people', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, balance }) });
+            const r = await fetch(serverUrl + '/team_people', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, balance }) });
             msg.textContent = r.ok ? 'Saved' : ('Error: ' + (await r.text()));
             await loadPeople(); selectPerson.value = name;
         });

@@ -1,0 +1,185 @@
+[
+  {
+    "id": "1759051527087-vaqqf2",
+    "timestamp": "2025-09-28T09:25:27.088Z",
+    "menu": "pos",
+    "user": "Placeholder name 1",
+    "items": {
+      "Snickers": 2
+    },
+    "total": 20,
+    "balanceAfter": 50,
+    "refunded": true
+  },
+  {
+    "id": "1759051549987-wtf3wy",
+    "timestamp": "2025-09-28T09:25:49.987Z",
+    "menu": "pos",
+    "user": "Placeholder name 1",
+    "items": {
+      "Snickers": 1
+    },
+    "total": 10,
+    "balanceAfter": 40,
+    "refunded": true
+  },
+  {
+    "id": "1759051782732-eikvwq",
+    "timestamp": "2025-09-28T09:29:42.733Z",
+    "menu": "pos",
+    "user": "Placeholder name 2",
+    "lines": [
+      {
+        "product": "Snickers",
+        "qty": 1,
+        "unit_price": 10,
+        "line_total": 10
+      }
+    ],
+    "total": 10,
+    "balanceAfter": 90,
+    "refunded": true
+  },
+  {
+    "id": "1759051791413-yghjpd",
+    "timestamp": "2025-09-28T09:29:51.413Z",
+    "menu": "pos",
+    "user": "Placeholder name 1",
+    "lines": [
+      {
+        "product": "Snickers",
+        "qty": 1,
+        "unit_price": 10,
+        "line_total": 10
+      }
+    ],
+    "total": 10,
+    "balanceAfter": 30,
+    "refunded": true
+  },
+  {
+    "id": "1759051828065-w10qah",
+    "timestamp": "2025-09-28T09:30:28.065Z",
+    "menu": "pos",
+    "user": "Placeholder name 1",
+    "lines": [
+      {
+        "product": "Snickers",
+        "qty": 1,
+        "unit_price": 10,
+        "line_total": 10
+      }
+    ],
+    "total": 10,
+    "balanceAfter": 60,
+    "refunded": false
+  },
+  {
+    "id": "1759051872350-e7mv5u",
+    "timestamp": "2025-09-28T09:31:12.350Z",
+    "menu": "team",
+    "user": "Alice (Team)",
+    "lines": [
+      {
+        "product": "Energy Drink",
+        "qty": 1,
+        "unit_price": 25,
+        "line_total": 25
+      }
+    ],
+    "total": 25,
+    "balanceAfter": 20,
+    "refunded": false
+  },
+  {
+    "id": "1759052021353-t9k7jt",
+    "timestamp": "2025-09-28T09:33:41.353Z",
+    "menu": "pos",
+    "user": "Placeholder name 1",
+    "lines": [
+      {
+        "product": "Snickers",
+        "qty": 1,
+        "unit_price": 10,
+        "line_total": 10
+      }
+    ],
+    "total": 10,
+    "balanceAfter": 50,
+    "refunded": false
+  },
+  {
+    "id": "1759052027277-0w9gnx",
+    "timestamp": "2025-09-28T09:33:47.277Z",
+    "menu": "pos",
+    "user": "Placeholder name 2",
+    "lines": [
+      {
+        "product": "Snickers",
+        "qty": 1,
+        "unit_price": 10,
+        "line_total": 10
+      }
+    ],
+    "total": 10,
+    "balanceAfter": 90,
+    "refunded": false
+  },
+  {
+    "id": "1759052032010-3azjof",
+    "timestamp": "2025-09-28T09:33:52.010Z",
+    "menu": "pos",
+    "user": "Placeholder name 1",
+    "lines": [
+      {
+        "product": "Snickers",
+        "qty": 1,
+        "unit_price": 10,
+        "line_total": 10
+      }
+    ],
+    "total": 10,
+    "balanceAfter": 40,
+    "refunded": false
+  },
+  {
+    "id": "1759052393089-3flgt2",
+    "timestamp": "2025-09-28T09:39:53.089Z",
+    "menu": "team",
+    "user": "Bob (Team)",
+    "lines": [
+      {
+        "product": "Energy Drink",
+        "qty": 1,
+        "unit_price": 25,
+        "line_total": 25
+      }
+    ],
+    "total": 25,
+    "balanceAfter": 65,
+    "refunded": false
+  },
+  {
+    "id": "1759052904257-ft9qi3",
+    "timestamp": "2025-09-28T09:48:24.257Z",
+    "menu": "pos",
+    "user": "Rasmus",
+    "lines": [
+      {
+        "product": "Mars",
+        "qty": 1,
+        "unit_price": 5,
+        "line_total": 5
+      },
+      {
+        "product": "Snickers",
+        "qty": 1,
+        "unit_price": 10,
+        "line_total": 10
+      }
+    ],
+    "total": 15,
+    "balanceAfter": 985,
+    "refunded": true
+  }
+]

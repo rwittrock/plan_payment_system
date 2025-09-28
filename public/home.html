@@ -4,344 +4,350 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Product System</title>
+    <title>POS – Product System</title>
     <style>
-        /* Page layout: let content grow naturally (no forced 100vh) */
+        :root {
+            --card-bg: #fff;
+            --muted: #666;
+            --brand: #28a745;
+            --brand2: #2563eb;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             font-family: Arial, sans-serif;
+            background: #f7f7f7;
             margin: 0;
-            padding: 24px 16px;
-            background-color: #f7f7f7;
+            padding: 20px;
         }
 
         .container {
-            display: flex;
-            flex-direction: column;
-            max-width: 520px;
-            width: 100%;
-            margin: 0 auto;
-            /* center horizontally */
+            max-width: 420px;
+            margin: auto;
+            background: var(--card-bg);
             padding: 20px;
-            background-color: #fff;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            border-radius: 10px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, .08);
         }
 
         h1,
         h2 {
+            margin: 8px 0;
             text-align: center;
-            color: #333;
-            margin: 10px 0;
         }
 
-        .user-select,
-        .product-quantity {
+        select {
             width: 100%;
-            margin-bottom: 20px;
             padding: 10px;
-            font-size: 16px;
             border: 1px solid #ccc;
-            border-radius: 5px;
-            box-sizing: border-box;
+            border-radius: 8px;
+            font-size: 16px;
         }
 
-        .info,
-        .product-list,
-        .total-display {
-            width: 100%;
+        .info p {
+            margin: 6px 0;
         }
 
-        .total-display {
-            text-align: center;
-            margin: 10px 0 16px;
-        }
-
-        /* Product rows never overflow the card */
-        .product-list-item {
+        .product-list {
+            margin-top: 10px;
             display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 10px;
+            flex-direction: column;
+            gap: 8px;
         }
 
-        .product-list-item span {
-            flex: 1;
-            min-width: 0;
+        .row {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 10px;
+            align-items: center;
+            border: 1px solid #ececec;
+            border-radius: 10px;
+            padding: 10px;
+            background: #fafafa;
+        }
+
+        .name {
+            white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            white-space: nowrap;
         }
 
-        .product-quantity {
-            flex: 0 0 140px;
-            width: 140px;
-            /* keep Safari consistent */
+        .price {
+            color: var(--muted);
+            font-size: 14px;
         }
 
-        button {
+        .controls {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .controls button {
+            width: 34px;
+            height: 34px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            background: #fff;
+            cursor: pointer;
+            font-size: 18px;
+            line-height: 1;
+        }
+
+        .controls input {
+            width: 64px;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 16px;
+        }
+
+        .totals {
+            margin-top: 12px;
+            text-align: center;
+        }
+
+        .buy {
             width: 100%;
             padding: 12px;
-            background-color: #28a745;
+            background: var(--brand);
             color: #fff;
             border: none;
-            border-radius: 5px;
+            border-radius: 10px;
             font-size: 16px;
             cursor: pointer;
+            margin-top: 8px;
         }
 
-        button:hover {
-            background-color: #218838;
-        }
-
-        /* Small screens: stack label + input */
-        @media (max-width: 480px) {
-            .product-list-item {
-                flex-direction: column;
-                align-items: stretch;
-            }
-
-            .product-list-item span {
-                white-space: normal;
-                text-overflow: clip;
-            }
-
-            .product-quantity {
-                flex: 0 0 auto;
-                width: 100%;
-            }
+        .buy:disabled {
+            background: #aaa;
+            cursor: not-allowed;
         }
 
         .links {
             text-align: center;
-            margin: 14px 0 0;
+            margin-top: 14px;
         }
 
         .links a {
+            color: var(--brand2);
             text-decoration: none;
-            color: #2563eb;
-            margin: 0 5px;
+            margin: 0 6px;
         }
 
         .links a:hover {
             text-decoration: underline;
         }
+
+        .toast {
+            position: fixed;
+            left: 50%;
+            top: 16px;
+            transform: translateX(-50%);
+            background: #111;
+            color: #fff;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 14px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .25s;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, .2);
+            z-index: 9999
+        }
+
+        .toast.show {
+            opacity: 1
+        }
     </style>
 </head>
 
 <body>
-
-    <!-- Select2 CSS -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
-
-    <!-- jQuery (required by Select2) -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
-    <!-- Select2 JavaScript -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
-
     <div class="container">
         <h1>User Balance</h1>
 
-        <!-- Dropdown to select a user -->
-        <select id="userSelect" class="user-select">
+        <select id="userSelect" aria-label="Select user">
             <option value="">Select a user</option>
         </select>
 
-        <!-- User information -->
-        <div class="info" id="userInfo">
-            <p><span id="userName">Name:</span></p>
-            <p><span id="userBalance">Balance:</span></p>
+        <div class="info">
+            <p><strong>Name:</strong> <span id="userName">—</span></p>
+            <p><strong>Balance:</strong> <span id="userBalance">—</span></p>
         </div>
 
         <h2>Products</h2>
+        <div id="productList" class="product-list" aria-live="polite"></div>
 
-        <!-- Product list to buy from -->
-        <div id="productList" class="product-list"></div>
-
-        <!-- Total price and updated balance -->
-        <div class="total-display">
-            <p>Total Price: <span id="totalPrice">0</span></p>
-            <p>Updated Balance: <span id="updatedBalance">0</span></p>
+        <div class="totals">
+            <p>Total: <strong><span id="totalPrice">0</span></strong></p>
+            <p>Updated Balance: <strong><span id="updatedBalance">—</span></strong></p>
         </div>
 
-        <!-- Button to buy products -->
-        <button id="buyButton">Buy Products</button>
-
-        <!-- Admin links stay INSIDE the white box, but outside the product list -->
-        <p class="links">
-            <a href="/people_admin.html">Manage People</a> •
-            <a href="/products_admin.html">Manage Products</a>
-        </p>
+        <button id="buyButton" class="buy" disabled>Buy Products</button>
     </div>
+
+    <p class="links">
+        <a href="/people_admin.html">Manage People</a> •
+        <a href="/products_admin.html">View Products</a> •
+        <a href="/team.html">Team POS</a> •
+        <a href="/team_people_admin.html">Manage Team People</a> •
+        <a href="/team_products_admin.html">View Team Products</a> •
+        <a href="/transactions_admin.html">Transactions</a> •
+        <a href="/reports_admin.html">Reports</a>
+    </p>
+
+    <div id="toast" class="toast" role="status" aria-live="polite">Purchase recorded</div>
 
     <script>
         const serverUrl = location.origin;
-        // Variables to store user data
-        let selectedUser = '';
-        let selectedUserBalance = 0;
-        let totalPrice = 0;
-        let products = {};
+        const $ = (id) => document.getElementById(id);
+        const safeId = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '_');
 
-        // Make safe element IDs from product names (no spaces/special chars)
-        const safeId = (name) => 'quantity-' + name.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+        let selectedUser = '';
+        let balance = 0;
+        let products = {};
+        let quantities = {};
+
+        function showToast(msg = 'Purchase recorded') {
+            const t = $('toast');
+            t.textContent = msg;
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 1200);
+        }
 
         async function loadUsers() {
-            try {
-                const response = await fetch(`${serverUrl}/people`);
-                const users = await response.json();
-                const sortedUsers = Object.keys(users).sort((a, b) => a.localeCompare(b));
-
-                const userSelect = document.getElementById('userSelect');
-                userSelect.innerHTML = '<option value="">Select a user</option>';
-
-                sortedUsers.forEach(userName => {
-                    const option = document.createElement('option');
-                    option.value = userName;
-                    option.textContent = userName;
-                    userSelect.appendChild(option);
-                });
-
-                // Initialize Select2 after users are loaded
-                $('#userSelect').select2({ placeholder: 'Select a user', allowClear: true });
-                $('#userSelect').on('change', function () {
-                    const userName = $(this).val();
-                    if (userName) fetchUserDetails(userName);
-                    else {
-                        document.getElementById('userName').textContent = 'Name:';
-                        document.getElementById('userBalance').textContent = 'Balance:';
-                    }
-                });
-            } catch (error) {
-                console.error('Error loading users:', error);
-            }
+            const res = await fetch(serverUrl + '/people');
+            const users = await res.json();
+            const sel = $('userSelect');
+            sel.textContent = '';
+            const def = document.createElement('option');
+            def.value = ''; def.textContent = 'Select a user';
+            sel.appendChild(def);
+            Object.keys(users).sort((a, b) => a.localeCompare(b)).forEach(name => {
+                const opt = document.createElement('option');
+                opt.value = name; opt.textContent = name;
+                sel.appendChild(opt);
+            });
         }
 
-        // Load products from backend
         async function loadProducts() {
-            try {
-                const response = await fetch(`${serverUrl}/products`);
-                products = await response.json();
+            const res = await fetch(serverUrl + '/products');
+            products = await res.json();
 
-                const productList = document.getElementById('productList');
-                productList.innerHTML = ''; // Reset list
+            const list = $('productList');
+            list.textContent = '';
+            quantities = {};
 
-                // Display each product with input to choose quantity
-                Object.keys(products).forEach(product => {
-                    const id = safeId(product);
-                    const productItem = document.createElement('div');
-                    productItem.classList.add('product-list-item');
-                    productItem.innerHTML = `
-            <span>${product} - ${products[product].price}</span>
-            <input type="number" min="0" value="0" id="${id}" class="product-quantity" />
-          `;
-                    productList.appendChild(productItem);
-                });
-            } catch (error) {
-                console.error('Error loading products:', error);
-            }
+            Object.keys(products).sort((a, b) => a.localeCompare(b)).forEach(name => {
+                const price = products[name].price || 0;
+                const row = document.createElement('div'); row.className = 'row';
+
+                const left = document.createElement('div');
+                const n = document.createElement('div'); n.className = 'name'; n.textContent = name;
+                const p = document.createElement('div'); p.className = 'price'; p.textContent = `Price: ${price}`;
+                left.append(n, p);
+
+                const controls = document.createElement('div'); controls.className = 'controls';
+                const minus = document.createElement('button'); minus.type = 'button'; minus.setAttribute('aria-label', `Decrease ${name}`); minus.textContent = '−';
+                const input = document.createElement('input'); input.autocomplete = 'off'; input.type = 'number'; input.min = '0'; input.step = '1'; input.value = '0'; input.id = 'q_' + safeId(name);
+                const plus = document.createElement('button'); plus.type = 'button'; plus.setAttribute('aria-label', `Increase ${name}`); plus.textContent = '+';
+
+                function setQty(val) {
+                    const v = Math.max(0, Number(val) || 0);
+                    input.value = String(v);
+                    quantities[name] = v;
+                    updateTotals();
+                }
+                minus.addEventListener('click', () => setQty(Number(input.value) - 1));
+                plus.addEventListener('click', () => setQty(Number(input.value) + 1));
+                input.addEventListener('input', () => setQty(input.value));
+
+                controls.append(minus, input, plus);
+                row.append(left, controls);
+                list.appendChild(row);
+
+                quantities[name] = 0;
+            });
+
+            updateTotals();
+            const firstInput = list.querySelector('.controls input');
+            if (firstInput) firstInput.focus({ preventScroll: true });
         }
 
-        // Event listener for user selection
-        document.getElementById('userSelect').addEventListener('change', function () {
-            const userName = this.value;
-            if (userName) fetchUserDetails(userName);
-            else {
-                document.getElementById('userName').textContent = 'Name:';
-                document.getElementById('userBalance').textContent = 'Balance:';
+        $('userSelect').addEventListener('change', async (e) => {
+            const name = e.target.value;
+            if (!name) {
+                selectedUser = ''; balance = 0;
+                $('userName').textContent = '—';
+                $('userBalance').textContent = '—';
+                updateTotals();
+                return;
+            }
+            const res = await fetch(serverUrl + '/people/' + encodeURIComponent(name));
+            if (res.ok) {
+                const data = await res.json();
+                selectedUser = name;
+                balance = data[name] ?? 0;
+                $('userName').textContent = name;
+                $('userBalance').textContent = balance;
+            } else {
+                selectedUser = ''; balance = 0;
+                $('userName').textContent = '—';
+                $('userBalance').textContent = '—';
+            }
+            updateTotals();
+        });
+
+        function updateTotals() {
+            let total = 0;
+            for (const [name, q] of Object.entries(quantities)) {
+                const qty = Math.max(0, Number(q) || 0);
+                const price = (products[name]?.price) || 0;
+                total += qty * price;
+            }
+            $('totalPrice').textContent = total;
+            const after = selectedUser ? (balance - total) : null;
+            $('updatedBalance').textContent = (after === null) ? '—' : (after >= 0 ? after : 'Insufficient');
+            $('buyButton').disabled = !selectedUser || total <= 0 || (after !== null && after < 0);
+        }
+
+        function resetForNextSale() {
+            for (const n of Object.keys(quantities)) quantities[n] = 0;
+            document.querySelectorAll('.controls input').forEach(inp => { inp.value = '0'; });
+            updateTotals();
+            const firstInput = document.querySelector('.controls input');
+            if (firstInput) firstInput.focus({ preventScroll: true });
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            showToast();
+        }
+
+        document.getElementById('buyButton').addEventListener('click', async () => {
+            const items = {};
+            for (const [name, q] of Object.entries(quantities)) {
+                const qty = Math.max(0, Number(q) || 0);
+                if (qty > 0) items[name] = qty;
+            }
+            if (!selectedUser || Object.keys(items).length === 0) return;
+
+            const res = await fetch(serverUrl + '/order', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: selectedUser, items })
+            });
+            if (res.ok) {
+                const j = await res.json();
+                balance = j.balance;
+                $('userBalance').textContent = balance;
+                resetForNextSale();
+            } else {
+                console.error('Order failed', await res.text());
             }
         });
 
-        // Fetch selected user's details
-        async function fetchUserDetails(userName) {
-            try {
-                const response = await fetch(`${serverUrl}/people/${encodeURIComponent(userName)}`);
-                const user = await response.json();
-                selectedUser = userName;
-                selectedUserBalance = user[userName];
-
-                document.getElementById('userName').textContent = `Name: ${userName}`;
-                document.getElementById('userBalance').textContent = `Balance: ${selectedUserBalance}`;
-                updateTotal();
-            } catch (error) {
-                console.error('Error fetching user details:', error);
-            }
-        }
-
-        // Update total price and updated balance
-        function updateTotal() {
-            totalPrice = 0;
-            Object.keys(products).forEach(product => {
-                const id = safeId(product);
-                const el = document.getElementById(id);
-                const quantity = parseInt(el && el.value, 10) || 0;
-                totalPrice += quantity * products[product].price;
-            });
-
-            const updatedBalance = selectedUserBalance - totalPrice;
-            document.getElementById('totalPrice').textContent = totalPrice;
-            document.getElementById('updatedBalance').textContent =
-                updatedBalance >= 0 ? updatedBalance : 'Insufficient funds';
-        }
-
-        // Event listener for product quantity change
-        document.getElementById('productList').addEventListener('input', updateTotal);
-
-        // Handle the purchase
-        async function handlePurchase() {
-            if (selectedUser === '') {
-                alert('Please select a user first.');
-                return;
-            }
-
-            const updatedBalance = selectedUserBalance - totalPrice;
-            if (updatedBalance < 0) {
-                alert('Insufficient balance!');
-                return;
-            }
-
-            // Prepare the purchase data
-            const productsSold = {};
-            Object.keys(products).forEach(product => {
-                const id = safeId(product);
-                const quantity = parseInt(document.getElementById(id).value, 10) || 0;
-                if (quantity > 0) productsSold[product] = quantity;
-            });
-
-            try {
-                const soldResponse = await fetch(`${serverUrl}/products/sold`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(productsSold),
-                });
-
-                if (soldResponse.ok) {
-                    const updateResponse = await fetch(`${serverUrl}/update_person`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ name: selectedUser, balance: updatedBalance }),
-                    });
-
-                    if (updateResponse.ok) {
-                        selectedUserBalance = updatedBalance;
-                        document.getElementById('userBalance').textContent = `Balance: ${updatedBalance}`;
-                        // Reset all quantities to 0 after purchase
-                        document.querySelectorAll('.product-quantity').forEach(i => i.value = 0);
-                        updateTotal();
-                    } else {
-                        console.error('Error updating balance:', updateResponse.statusText);
-                    }
-                } else {
-                    console.error('Error processing sale:', soldResponse.statusText);
-                }
-            } catch (error) {
-                console.error('Error handling purchase:', error);
-            }
-        }
-
-        // Event listener for Buy Products button
-        document.getElementById('buyButton').addEventListener('click', handlePurchase);
-
-        // Load initial data
         loadUsers();
         loadProducts();
     </script>
