@@ -63,9 +63,9 @@ fastify.put('/people', async (req, reply) => {
 // ===== POS Products =====
 fastify.get('/products', async () => readJson(productFile));
 
-// create/update (upsert)
+// create/update (upsert) — NO images
 fastify.put('/products/upsert', async (req, reply) => {
-  const { name, price, image } = req.body || {};
+  const { name, price } = req.body || {};
   if (!name || typeof price !== 'number' || price < 0) {
     return reply.status(400).send({ error: 'Provide valid name and non-negative price' });
   }
@@ -74,13 +74,10 @@ fastify.put('/products/upsert', async (req, reply) => {
     products[name] = { price, sold: 0 };
   } else {
     products[name].price = price;
-    // image: allow set/clear
   }
-  if (image === '') {
-    delete products[name].image;
-  } else if (typeof image === 'string') {
-    products[name].image = image;
-  }
+  // Ensure we don't carry over any legacy image keys if present
+  if (products[name].image !== undefined) delete products[name].image;
+
   writeJson(productFile, products);
   return { message: 'Product upserted', product: { [name]: products[name] } };
 });
@@ -149,9 +146,9 @@ fastify.put('/team_people', async (req, reply) => {
 // ===== TEAM Products =====
 fastify.get('/team_products', async () => readJson(teamProductFile));
 
-// create/update (upsert)
+// create/update (upsert) — NO images
 fastify.put('/team_products/upsert', async (req, reply) => {
-  const { name, price, image } = req.body || {};
+  const { name, price } = req.body || {};
   if (!name || typeof price !== 'number' || price < 0) {
     return reply.status(400).send({ error: 'Provide valid name and non-negative price' });
   }
@@ -161,11 +158,8 @@ fastify.put('/team_products/upsert', async (req, reply) => {
   } else {
     products[name].price = price;
   }
-  if (image === '') {
-    delete products[name].image;
-  } else if (typeof image === 'string') {
-    products[name].image = image;
-  }
+  if (products[name].image !== undefined) delete products[name].image;
+
   writeJson(teamProductFile, products);
   return { message: 'Team product upserted', product: { [name]: products[name] } };
 });
@@ -220,31 +214,60 @@ fastify.get('/transactions', async () => readTransactions());
 fastify.post('/transactions/refund/:id', async (req, reply) => {
   const { id } = req.params;
   const txs = readTransactions();
-  const tx = txs.find(t => t.id === id);
-  if (!tx) return reply.status(404).send({ error: 'Transaction not found' });
+  const txIndex = txs.findIndex(t => t.id === id);
+  if (txIndex === -1) return reply.status(404).send({ error: 'Transaction not found' });
+
+  const tx = txs[txIndex];
   if (tx.refunded) return reply.status(400).send({ error: 'Already refunded' });
 
+  // --- Compute refundTotal strictly from recorded lines (price at time of sale) ---
+  const lines = Array.isArray(tx.lines) ? tx.lines : [];
+  const recomputedTotal = lines.reduce((sum, l) => {
+    const qty = Math.max(0, Number(l.qty) || 0);
+    const unit_price = Number(l.unit_price) || 0;
+    return sum + qty * unit_price;
+  }, 0);
+
+  // If tx.total is absent or inconsistent, fix it so reporting stays coherent.
+  const refundTotal = Number.isFinite(Number(tx.total)) ? Number(tx.total) : recomputedTotal;
+  if (Math.abs(refundTotal - recomputedTotal) > 1e-6) {
+    // normalize stored total so everything is consistent going forward
+    tx.total = recomputedTotal;
+  }
+
+  // --- Choose the correct ledgers based on menu ---
   const peoplePath = tx.menu === 'team' ? teamPeopleFile : peopleFile;
   const productsPath = tx.menu === 'team' ? teamProductFile : productFile;
 
+  // --- Refund the user balance first ---
   const people = readJson(peoplePath);
   if (people[tx.user] === undefined) return reply.status(404).send({ error: 'User not found' });
-  people[tx.user] += Number(tx.total) || 0;
+  people[tx.user] += recomputedTotal; // always price-at-purchase, never current price
   writeJson(peoplePath, people);
 
+  // --- Reverse sold counters using recorded quantities ---
   const products = readJson(productsPath);
-  for (const l of tx.lines || []) {
-    if (products[l.product]) {
-      products[l.product].sold = Math.max(0, Number(products[l.product].sold) || 0) - Number(l.qty || 0);
-      if (products[l.product].sold < 0) products[l.product].sold = 0;
+  for (const l of lines) {
+    const pname = l.product;
+    const qty = Math.max(0, Number(l.qty) || 0);
+    if (!products[pname]) {
+      // product was deleted/renamed later; we still processed the balance refund
+      // skip sold-counter reversal for this line
+      continue;
     }
+    const sold = Math.max(0, Number(products[pname].sold) || 0);
+    products[pname].sold = Math.max(0, sold - qty);
   }
   writeJson(productsPath, products);
 
+  // --- Mark refunded and persist ---
   tx.refunded = true;
+  txs[txIndex] = tx;
   writeTransactions(txs);
+
   return { message: 'Refund complete', transaction: tx };
 });
+
 
 fastify.get('/reports/users', async () => {
   const tally = {};

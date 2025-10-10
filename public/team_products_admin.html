@@ -1,222 +1,120 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Team Products Admin</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f7f7f7;
-            margin: 0;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 680px;
-            margin: auto;
-            background: #fff;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, .1);
-        }
-
-        h1 {
-            margin: 0 0 10px
-        }
-
-        .grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px
-        }
-
-        label {
-            display: block;
-            margin-top: 10px;
-            font-weight: bold;
-        }
-
-        input,
-        select,
-        button {
-            width: 100%;
-            padding: 10px;
-            margin-top: 6px;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            font-size: 16px;
-        }
-
-        button.primary {
-            background: #2563eb;
-            color: #fff;
-            border: none;
-            cursor: pointer
-        }
-
-        button.primary:hover {
-            background: #1e4ec9
-        }
-
-        button.danger {
-            background: #dc2626;
-            color: #fff;
-            border: none;
-            cursor: pointer
-        }
-
-        button.danger:hover {
-            background: #b91c1c
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 16px
-        }
-
-        th,
-        td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left
-        }
-
-        th {
-            background: #eee
-        }
-
-        .small {
-            color: #666;
-            font-size: 12px
-        }
-
-        .msg {
-            margin-top: 10px;
-            text-align: center
-        }
-
-        @media (max-width:700px) {
-            .grid {
-                grid-template-columns: 1fr
-            }
-        }
-    </style>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Team Products Admin</title>
+<style>
+  body{font-family:Arial,sans-serif;background:#f7f7f7;margin:0;padding:20px;}
+  .container{max-width:680px;margin:auto;background:#fff;padding:20px;border-radius:10px;box-shadow:0 4px 12px rgba(0,0,0,.1);}
+  h1{margin:0 0 10px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  label{display:block;margin-top:10px;font-weight:bold;}
+  input,select,button{width:100%;padding:10px;margin-top:6px;border:1px solid #ccc;border-radius:8px;font-size:16px;}
+  button.primary{background:#2563eb;color:#fff;border:none;cursor:pointer}
+  button.primary:hover{background:#1e4ec9}
+  button.danger{background:#dc2626;color:#fff;border:none;cursor:pointer}
+  button.danger:hover{background:#b91c1c}
+  table{width:100%;border-collapse:collapse;margin-top:16px}
+  th,td{border:1px solid #ddd;padding:8px;text-align:left}
+  th{background:#eee}
+  .msg{margin-top:10px;text-align:center}
+  @media (max-width:700px){.grid{grid-template-columns:1fr}}
+</style>
 </head>
-
 <body>
-    <div class="container">
-        <h1>Team Products Admin</h1>
+<div class="container">
+  <h1>Team Products Admin</h1>
 
-        <div class="grid">
-            <div>
-                <label for="selectProduct">Select Product</label>
-                <select id="selectProduct"></select>
+  <div>
+    <div>
+      <label for="selectProduct">Select Product</label>
+      <select id="selectProduct"></select>
 
-                <label for="name">Name</label>
-                <input id="name" placeholder="e.g., Energy Drink" />
+      <label for="name">Name</label>
+      <input id="name" placeholder="e.g., Energy Drink"/>
 
-                <label for="price">Price</label>
-                <input id="price" type="number" step="0.01" min="0" placeholder="e.g., 15" />
+      <label for="price">Price</label>
+      <input id="price" type="number" step="0.01" min="0" placeholder="e.g., 15"/>
 
-                <label for="image">Image URL <span class="small">(optional; leave empty to keep; set empty then Save to
-                        clear)</span></label>
-                <input id="image" type="url" placeholder="https://... or /images/..." />
-
-                <button id="save" class="primary">Save / Update</button>
-                <button id="del" class="danger">Delete</button>
-                <div id="msg" class="msg"></div>
-            </div>
-
-            <div>
-                <table id="tbl">
-                    <thead>
-                        <tr>
-                            <th>Product</th>
-                            <th>Price</th>
-                            <th>Sold</th>
-                            <th>Image</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-                <p class="small">Sold is updated by purchases/refunds. Change name/price/image here.</p>
-            </div>
-        </div>
-
-        <p style="text-align:center;margin-top:12px;"><a href="/">← Back</a></p>
+      <button id="save" class="primary">Save / Update</button>
+      <button id="del" class="danger">Delete</button>
+      <div id="msg" class="msg"></div>
     </div>
 
-    <script>
-        const serverUrl = location.origin;
-        let state = {};
+    <div>
+      <table id="tbl">
+        <thead><tr><th>Product</th><th>Price</th><th>Sold</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
 
-        function row(product, data) {
-            const tr = document.createElement('tr');
-            const td1 = document.createElement('td'); td1.textContent = product;
-            const td2 = document.createElement('td'); td2.textContent = data.price;
-            const td3 = document.createElement('td'); td3.textContent = data.sold || 0;
-            const td4 = document.createElement('td'); td4.textContent = (data.image || '');
-            tr.append(td1, td2, td3, td4);
-            tr.addEventListener('click', () => {
-                selectProduct.value = product;
-                document.getElementById('name').value = product;
-                document.getElementById('price').value = data.price;
-                document.getElementById('image').value = data.image || '';
-            });
-            return tr;
-        }
+  <p style="text-align:center;margin-top:12px;"><a href="/">← Back</a></p>
+</div>
 
-        async function loadList() {
-            const r = await fetch(serverUrl + '/team_products');
-            state = await r.json();
-            const tb = document.querySelector('#tbl tbody'); tb.textContent = '';
-            const sel = document.getElementById('selectProduct'); sel.innerHTML = '<option value="">— New —</option>';
-            Object.keys(state).sort().forEach(p => {
-                tb.appendChild(row(p, state[p]));
-                const opt = document.createElement('option'); opt.value = p; opt.textContent = p; sel.appendChild(opt);
-            });
-        }
+<script>
+const serverUrl = location.origin;
+let state = {};
 
-        document.getElementById('selectProduct').addEventListener('change', e => {
-            const p = e.target.value;
-            if (!p) { name.value = ''; price.value = ''; image.value = ''; return; }
-            document.getElementById('name').value = p;
-            document.getElementById('price').value = state[p]?.price ?? '';
-            document.getElementById('image').value = state[p]?.image ?? '';
-        });
+function row(product, data){
+  const tr=document.createElement('tr');
+  const td1=document.createElement('td'); td1.textContent=product;
+  const td2=document.createElement('td'); td2.textContent=data.price;
+  const td3=document.createElement('td'); td3.textContent=data.sold||0;
+  tr.append(td1,td2,td3);
+  tr.addEventListener('click', ()=>{
+    selectProduct.value = product;
+    document.getElementById('name').value = product;
+    document.getElementById('price').value = data.price;
+  });
+  return tr;
+}
 
-        document.getElementById('save').addEventListener('click', async () => {
-            const n = document.getElementById('name').value.trim();
-            const pr = Number(document.getElementById('price').value);
-            const img = document.getElementById('image').value;
-            const msg = document.getElementById('msg');
-            if (!n || Number.isNaN(pr) || pr < 0) { msg.textContent = 'Enter valid name and price'; return; }
+async function loadList(){
+  const r = await fetch(serverUrl+'/team_products');
+  state = await r.json();
+  const tb = document.querySelector('#tbl tbody'); tb.textContent='';
+  const sel = document.getElementById('selectProduct'); sel.innerHTML = '<option value="">— New —</option>';
+  Object.keys(state).sort().forEach(p=>{
+    tb.appendChild(row(p, state[p]));
+    const opt = document.createElement('option'); opt.value=p; opt.textContent=p; sel.appendChild(opt);
+  });
+}
 
-            const res = await fetch(serverUrl + '/team_products/upsert', {
-                method: 'PUT', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: n, price: pr, image: img })
-            });
-            msg.textContent = res.ok ? 'Saved' : ('Error: ' + await res.text());
-            await loadList();
-            selectProduct.value = n;
-        });
+document.getElementById('selectProduct').addEventListener('change', e=>{
+  const p = e.target.value;
+  if (!p) { name.value=''; price.value=''; return; }
+  document.getElementById('name').value = p;
+  document.getElementById('price').value = state[p]?.price ?? '';
+});
 
-        document.getElementById('del').addEventListener('click', async () => {
-            const p = document.getElementById('selectProduct').value || document.getElementById('name').value.trim();
-            const msg = document.getElementById('msg');
-            if (!p) { msg.textContent = 'Select a product to delete'; return; }
-            if (!confirm('Delete product "' + p + '"?')) return;
-            const res = await fetch(serverUrl + '/team_products/' + encodeURIComponent(p), { method: 'DELETE' });
-            msg.textContent = res.ok ? 'Deleted' : ('Error: ' + await res.text());
-            name.value = ''; price.value = ''; image.value = ''; selectProduct.value = '';
-            await loadList();
-        });
+document.getElementById('save').addEventListener('click', async ()=>{
+  const n = document.getElementById('name').value.trim();
+  const pr = Number(document.getElementById('price').value);
+  const msg = document.getElementById('msg');
+  if (!n || Number.isNaN(pr) || pr < 0) { msg.textContent='Enter valid name and price'; return; }
 
-        loadList();
-    </script>
+  const res = await fetch(serverUrl+'/team_products/upsert', {
+    method:'PUT', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ name:n, price:pr })
+  });
+  msg.textContent = res.ok ? 'Saved' : ('Error: '+await res.text());
+  await loadList();
+  selectProduct.value = n;
+});
+
+document.getElementById('del').addEventListener('click', async ()=>{
+  const p = document.getElementById('selectProduct').value || document.getElementById('name').value.trim();
+  const msg = document.getElementById('msg');
+  if (!p) { msg.textContent='Select a product to delete'; return; }
+  if (!confirm('Delete product "'+p+'"?')) return;
+  const res = await fetch(serverUrl+'/team_products/'+encodeURIComponent(p), { method:'DELETE' });
+  msg.textContent = res.ok ? 'Deleted' : ('Error: '+await res.text());
+  name.value=''; price.value=''; selectProduct.value='';
+  await loadList();
+});
+
+loadList();
+</script>
 </body>
-
 </html>

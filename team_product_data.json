@@ -1,10 +1,14 @@
 {
   "Energy Drink": {
     "price": 25,
-    "sold": 5,
+    "sold": 8,
     "sold_breakdown": {
       "25": 3
     },
     "image": ""
+  },
+  "awdddddddddddddddddddddddddddddddddd": {
+    "price": 2,
+    "sold": 7
   }
 }
