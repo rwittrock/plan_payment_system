@@ -1,13 +1,1 @@
-{
-  "Snickers": {
-    "price": 11,
-    "sold": 6,
-    "sold_breakdown": {
-      "10": 1
-    }
-  },
-  "Mars": {
-    "price": 6,
-    "sold": 2
-  }
-}
+{}
